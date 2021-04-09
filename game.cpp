@@ -9,6 +9,10 @@
 #include <SDL_opengl.h>
 #endif
 #include <cstdio>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
 
 //For Visual Studios
 #ifdef _MSC_VER
@@ -21,12 +25,10 @@
 #include <gtc/type_ptr.hpp>
 #include <gtx/string_cast.hpp>
 
-#include <cstdio>
-#include <iostream>
-#include <fstream>
-#include <string>
-
 #include "shader.h"
+#include "EventHandler.h"
+#include "Camera.h"
+
 using namespace std;
 
 float timePast = 0;
@@ -40,19 +42,61 @@ char windowTitle[] = "My OpenGL Program";
 
 float avgRenderTime = 0;
 
-void LoadMap(const char* mapFile) {
-	cout << "Loading map..." << endl;
-	ifstream map_file;
-	map_file.open(mapFile);
-	if (!map_file) {	// if not a valid input source, abort
-		cout << "File: " << mapFile << " does not exist. Aborting..." << endl;
+vector<glm::vec3> wallPositions;
+glm::vec3 goalPostion;
+
+Camera camera = Camera(screenWidth, screenHeight);
+
+void LoadMap(const char* mapFilePath) {
+	cout << "Loading map " << mapFilePath << "..." << endl;
+	ifstream mapFile;
+	mapFile.open(mapFilePath);
+	if (!mapFile) {	// if not a valid input source, abort
+		cout << "File: " << mapFilePath << " does not exist. Aborting..." << endl;
 		exit(0);
 	}
+	//Get width and height of the map
 	int width = 0;
 	int height = 0;
-	map_file >> width >> height;
-	map_file.close();
+	string line;
+	getline(mapFile, line);
+	stringstream ss;
+	ss << line;
+	ss >> width >> height;
+
+	//Read map data
+	for (int i = 0; i < width; i++) {
+		//cout << "i: " << to_string(i) << endl;
+		getline(mapFile,line);
+		for (int j = 0; j < height; j++) {
+			//cout << "i: " << to_string(i) << "j: " << to_string(j) << " val: " << line[j] << endl;
+			if (line[j] == '0') {
+				continue;
+			}
+			else if (line[j] == 'W') { //handle walls
+				wallPositions.push_back(glm::vec3(i, 0, j));
+				printf("%c (%d, 0, %d)\n",line[j] ,i, j);
+			}
+			else if (line[j] == 'S') { //handle start
+				camera.position = glm::vec3(i,0,j);
+			}
+			else if (line[j] == 'G') { //handle goal
+
+			}
+			else if (line[j] == 'A' || line[j] == 'B' || line[j] == 'C' || line[j] == 'D' || line[j] == 'E') {  //handle doors
+
+			}
+			else if (line[j] == 'a' || line[j] == 'b' || line[j] == 'c' || line[j] == 'd' || line[j] == 'e') {  //handle keys
+
+			}
+		}
+		//cout << endl;
+	}
+	mapFile.close();
 	cout << width << " , " << height << endl;
+	//TODO: Add walls around the perimeter of map
+
+	//TODO: Load models
 }
 
 SDL_Window* InitSDL() {
@@ -64,12 +108,7 @@ SDL_Window* InitSDL() {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
 	//Create a window (offsetx, offsety, width, height, flags)
-	return SDL_CreateWindow(windowTitle, 100, 100, screenWidth, screenHeight, SDL_WINDOW_OPENGL);
-	//The above window cannot be resized which makes some code slightly easier.
-	//Below show how to make a full screen window or allow resizing
-	//SDL_Window* window = SDL_CreateWindow(window_title, 0, 0, screen_width, screen_height, SDL_WINDOW_FULLSCREEN|SDL_WINDOW_OPENGL);
-	//return SDL_CreateWindow(window_title, 100, 100, screen_width, screen_height, SDL_WINDOW_RESIZABLE|SDL_WINDOW_OPENGL);
-	//SDL_Window* window = SDL_CreateWindow(window_title,SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,0,0,SDL_WINDOW_FULLSCREEN_DESKTOP|SDL_WINDOW_OPENGL); //Boarderless window "fake" full screen
+	return SDL_CreateWindow(windowTitle, 100, 100, screenWidth, screenHeight, SDL_WINDOW_RESIZABLE|SDL_WINDOW_OPENGL);
 }
 
 int main(int argc, char* argv[]) {
@@ -90,11 +129,11 @@ int main(int argc, char* argv[]) {
 	}
 
 	//Get map info
-	LoadMap("map.txt");
+	LoadMap("maps/map.txt");
 
 	//Load Model
 	ifstream modelFile;
-	modelFile.open("teapot.txt");
+	modelFile.open("models/cube.txt");
 	int numLines = 0;
 	modelFile >> numLines;
 	float* modelData = new float[numLines];
@@ -106,7 +145,7 @@ int main(int argc, char* argv[]) {
 	modelFile.close();
 
 	//Loader the shaders
-	Shader shader = Shader("teapot.vert", "teapot.frag");
+	Shader shader = Shader("shaders/shader.vert", "shaders/shader.frag");
 	shader.use(); //Set the active shader (only one can be used at a time)
 
 
@@ -142,25 +181,16 @@ int main(int argc, char* argv[]) {
 
 	glEnable(GL_DEPTH_TEST);
 
-	glm::vec3 positions[] = {
-		glm::vec3(0.0f,  0.0f,  0.0f),
-		glm::vec3(0.0f,  -2.0f,  0.0f),
-		glm::vec3(0.0f,  2.0f,  0.0f)
-	};
-
-	glm::vec3 cam_pos = glm::vec3(0.f, 0.f, 3.f);
-	glm::vec3 cam_dir = glm::vec3(0.0f, 0.0f, -1.0f);
-	glm::vec3 cam_up = glm::vec3(0.0f, 1.0f, 0.0f);
-
 	//Event Loop (Loop forever processing each event as fast as possible)
 	SDL_Event windowEvent;
+	EventHandler eventHandler;
 	bool quit = false;
 	while (!quit) {
 		float t_start = SDL_GetTicks();
 		deltaTime = t_start - lastFrameTime;
 		lastFrameTime = t_start;
-		float speed = 0.05f * deltaTime;
-		cout << to_string(speed) << endl;
+		float movementSpeed = 0.01f * deltaTime;
+		//cout << to_string(speed) << endl;
 		while (SDL_PollEvent(&windowEvent)) {
 			if (windowEvent.type == SDL_QUIT) quit = true; //Exit event loop
 		//List of keycodes: https://wiki.libsdl.org/SDL_Keycode - You can catch many special keys
@@ -169,18 +199,39 @@ int main(int argc, char* argv[]) {
 				quit = true; //Exit event loop
 			if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_f) //If "f" is pressed
 				fullscreen = !fullscreen;
-			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_a) { //If "a" is pressed
-				cam_pos -= speed * glm::normalize(glm::cross(cam_dir, cam_up));
+			if (windowEvent.type == SDL_WINDOWEVENT && windowEvent.window.event == SDL_WINDOWEVENT_RESIZED) { //If window is resized
+				cout << "Resizing Window..." << endl;
+				screenWidth = windowEvent.window.data1;
+				screenHeight = windowEvent.window.data2;
+				camera.crossHairX = screenWidth / 2;
+				camera.crossHairY = screenHeight / 2;
+				aspect = screenWidth / (float)screenHeight;
+				glViewport(0, 0, screenWidth, screenHeight);
 			}
-			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_d) { //If "d" is pressed
-				cam_pos += speed * glm::normalize(glm::cross(cam_dir, cam_up));
+
+			eventHandler.handleEvent(windowEvent);
+
+			//Update player movement
+			if (eventHandler.moveForward) { //If "w" is pressed
+				camera.moveForward(movementSpeed);
 			}
-			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_w) { //If "w" is pressed
-				cam_pos += speed * cam_dir;
+			if (eventHandler.moveBackward) { //If "s" is pressed
+				camera.moveBackward(movementSpeed);
 			}
-			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_s) { //If "s" is pressed
-				cam_pos -= speed * cam_dir;
+			if (eventHandler.moveLeft) { //If "a" is pressed
+				camera.moveLeft(movementSpeed);
 			}
+			if (eventHandler.moveRight) { //If "d" is pressed
+				camera.moveRight(movementSpeed);
+			}
+
+			//Make sure camera is always at ground level
+			camera.position.y = 0;
+
+			//Update Camera's look at direction based on mouse position
+			camera.updateLookDirection(eventHandler.mouseXPos, eventHandler.mouseYPos);
+
+
 			SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0); //Set to full screen 
 		}
 
@@ -192,22 +243,22 @@ int main(int argc, char* argv[]) {
 
 		//Set up view matrix
 		glm::mat4 view = glm::lookAt(
-			cam_pos,  //Cam Position
-			cam_pos + cam_dir,  //Look at point
-			cam_up); //Up
+			camera.position,  //Cam Position
+			camera.position + camera.direction,  //Look at point
+			camera.up); //Up
 		shader.setUniform("view", view);
 
 		//Set up projection matrix
-		glm::mat4 proj = glm::perspective(3.14f / 4, aspect, 1.0f, 100.0f); //FOV, aspect, near, far
+		glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 1.0f, 100.0f); //FOV, aspect, near, far
 		shader.setUniform("proj", proj);
 
 		glBindVertexArray(vao);
 		//Draw Objects
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < wallPositions.size(); i++) {
 			glm::mat4 model = glm::mat4(1);
-			model = glm::translate(model, positions[i]);
-			model = glm::rotate(model, timePast * 3.14f / 2, glm::vec3(0.0f, 1.0f, 1.0f));
-			model = glm::rotate(model, timePast * 3.14f / 4, glm::vec3(1.0f, 0.0f, 0.0f));
+			model = glm::translate(model, wallPositions[i]);
+			//model = glm::rotate(model, timePast * 3.14f / 2, glm::vec3(0.0f, 1.0f, 1.0f));
+			//model = glm::rotate(model, timePast * 3.14f / 4, glm::vec3(1.0f, 0.0f, 0.0f));
 			shader.setUniform("model", model);
 			glDrawArrays(GL_TRIANGLES, 0, numTris); //(Primitives, Which VBO, Number of vertices)
 		}
