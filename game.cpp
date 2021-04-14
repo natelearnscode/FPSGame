@@ -28,6 +28,8 @@
 #include "shader.h"
 #include "EventHandler.h"
 #include "Camera.h"
+#include "Wall.h"
+#include "Floor.h"
 
 using namespace std;
 
@@ -41,18 +43,20 @@ int screenHeight = 600;
 char windowTitle[] = "My OpenGL Program";
 
 float avgRenderTime = 0;
-
-vector<glm::vec3> wallPositions;
-glm::vec3 goalPostion;
+Wall wallModel;
+Floor floorModel;
 
 Camera camera = Camera(screenWidth, screenHeight);
 
-void LoadMap(const char* mapFilePath) {
-	cout << "Loading map " << mapFilePath << "..." << endl;
+void LoadMap(const char* mapFilePath, Shader* shader) {
+	std::cout << "Loading map " << mapFilePath << "..." << endl;
+	//Load Models
+	wallModel.loadModel(shader);
+
 	ifstream mapFile;
 	mapFile.open(mapFilePath);
 	if (!mapFile) {	// if not a valid input source, abort
-		cout << "File: " << mapFilePath << " does not exist. Aborting..." << endl;
+		std::cout << "File: " << mapFilePath << " does not exist. Aborting..." << endl;
 		exit(0);
 	}
 	//Get width and height of the map
@@ -63,22 +67,35 @@ void LoadMap(const char* mapFilePath) {
 	stringstream ss;
 	ss << line;
 	ss >> width >> height;
+	int mapScale = 2;
+
+	std::cout << "Loading floor... " << endl;
+	floorModel.loadModel(shader, width * mapScale, height * mapScale);
+
+	//Add walls to the perimeter of the map
+	for (int i = 0; i < height; i++) {
+		wallModel.locations.push_back(glm::vec3(i * mapScale, 0, -1 * mapScale));
+		wallModel.locations.push_back(glm::vec3(i * mapScale, 0, height * mapScale));
+	}
+	for (int i = 0; i < width; i++) {
+		wallModel.locations.push_back(glm::vec3(-1 * mapScale, 0, i * mapScale));
+		wallModel.locations.push_back(glm::vec3(width * mapScale, 0, i * mapScale));
+	}
 
 	//Read map data
-	for (int i = 0; i < width; i++) {
+	for (int i = 0; i < height; i++) {
 		//cout << "i: " << to_string(i) << endl;
 		getline(mapFile,line);
-		for (int j = 0; j < height; j++) {
+		for (int j = 0; j < width; j++) {
 			//cout << "i: " << to_string(i) << "j: " << to_string(j) << " val: " << line[j] << endl;
 			if (line[j] == '0') {
 				continue;
 			}
 			else if (line[j] == 'W') { //handle walls
-				wallPositions.push_back(glm::vec3(i, 0, j));
-				printf("%c (%d, 0, %d)\n",line[j] ,i, j);
+				wallModel.locations.push_back(glm::vec3(j * mapScale, 0, i * mapScale));
 			}
 			else if (line[j] == 'S') { //handle start
-				camera.position = glm::vec3(i,0,j);
+				camera.position = glm::vec3(j * mapScale,0,i * mapScale);
 			}
 			else if (line[j] == 'G') { //handle goal
 
@@ -90,13 +107,10 @@ void LoadMap(const char* mapFilePath) {
 
 			}
 		}
-		//cout << endl;
 	}
 	mapFile.close();
-	cout << width << " , " << height << endl;
-	//TODO: Add walls around the perimeter of map
-
-	//TODO: Load models
+	std::cout << "done." << endl;
+	//exit(0);
 }
 
 SDL_Window* InitSDL() {
@@ -128,56 +142,12 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 
-	//Get map info
-	LoadMap("maps/map.txt");
-
-	//Load Model
-	ifstream modelFile;
-	modelFile.open("models/cube.txt");
-	int numLines = 0;
-	modelFile >> numLines;
-	float* modelData = new float[numLines];
-	for (int i = 0; i < numLines; i++) {
-		modelFile >> modelData[i];
-	}
-	printf("Mode line count: %d\n", numLines);
-	float numTris = numLines / 8;
-	modelFile.close();
-
 	//Loader the shaders
-	Shader shader = Shader("shaders/shader.vert", "shaders/shader.frag");
-	shader.use(); //Set the active shader (only one can be used at a time)
+	Shader* shader = new Shader("shaders/shader.vert", "shaders/shader.frag");
+	shader->use(); //Set the active shader (only one can be used at a time)
 
-
-	//Build a Vertex Array Object. This stores the VBO and attribute mappings in one object
-	GLuint vao;
-	glGenVertexArrays(1, &vao); //Create a VAO
-	glBindVertexArray(vao); //Bind the above created VAO to the current context
-
-	//Allocate memory on the graphics card to store geometry (vertex buffer object)
-	GLuint vbo[1];
-	glGenBuffers(1, vbo);  //Create 1 buffer called vbo
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
-	glBufferData(GL_ARRAY_BUFFER, numLines * sizeof(float), modelData, GL_STATIC_DRAW); //upload vertices to vbo
-	//GL_STATIC_DRAW means we won't change the geometry, GL_DYNAMIC_DRAW = geometry changes infrequently
-	//GL_STREAM_DRAW = geom. changes frequently.  This effects which types of GPU memory is used
-
-  //Tell OpenGL how to set fragment shader input 
-	GLint posAttrib = glGetAttribLocation(shader.ID, "position");
-	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
-	//Attribute, vals/attrib., type, normalized?, stride, offset
-	//Binds to VBO current GL_ARRAY_BUFFER 
-	glEnableVertexAttribArray(posAttrib);
-
-	//GLint colAttrib = glGetAttribLocation(shaderProgram, "inColor");
-	//glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 8*sizeof(float), (void*)(3*sizeof(float)));
-	//glEnableVertexAttribArray(colAttrib);
-
-	GLint normAttrib = glGetAttribLocation(shader.ID, "inNormal");
-	glVertexAttribPointer(normAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
-	glEnableVertexAttribArray(normAttrib);
-
-	glBindVertexArray(0); //Unbind the VAO
+	//Load map from text file
+	LoadMap("maps/map.txt", shader);
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -189,18 +159,16 @@ int main(int argc, char* argv[]) {
 		float t_start = SDL_GetTicks();
 		deltaTime = t_start - lastFrameTime;
 		lastFrameTime = t_start;
-		float movementSpeed = 0.01f * deltaTime;
-		//cout << to_string(speed) << endl;
+		float movementSpeed = 0.003f * deltaTime;
+		float cameraSensitivity = 0.5f;
 		while (SDL_PollEvent(&windowEvent)) {
 			if (windowEvent.type == SDL_QUIT) quit = true; //Exit event loop
-		//List of keycodes: https://wiki.libsdl.org/SDL_Keycode - You can catch many special keys
-		//Scancode referes to a keyboard position, keycode referes to the letter (e.g., EU keyboards)
 			if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
 				quit = true; //Exit event loop
 			if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_f) //If "f" is pressed
 				fullscreen = !fullscreen;
 			if (windowEvent.type == SDL_WINDOWEVENT && windowEvent.window.event == SDL_WINDOWEVENT_RESIZED) { //If window is resized
-				cout << "Resizing Window..." << endl;
+				std::cout << "Resizing Window..." << endl;
 				screenWidth = windowEvent.window.data1;
 				screenHeight = windowEvent.window.data2;
 				camera.crossHairX = screenWidth / 2;
@@ -226,10 +194,10 @@ int main(int argc, char* argv[]) {
 			}
 
 			//Make sure camera is always at ground level
-			camera.position.y = 0;
+			//camera.position.y = 0;
 
-			//Update Camera's look at direction based on mouse position
-			camera.updateLookDirection(eventHandler.mouseXPos, eventHandler.mouseYPos);
+			//Update Camera's look direction based on mouse position
+			camera.updateLookDirection(eventHandler.mouseXPos, eventHandler.mouseYPos, cameraSensitivity);
 
 
 			SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0); //Set to full screen 
@@ -246,23 +214,15 @@ int main(int argc, char* argv[]) {
 			camera.position,  //Cam Position
 			camera.position + camera.direction,  //Look at point
 			camera.up); //Up
-		shader.setUniform("view", view);
+		shader->setUniform("view", view);
 
 		//Set up projection matrix
-		glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 1.0f, 100.0f); //FOV, aspect, near, far
-		shader.setUniform("proj", proj);
+		glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f); //FOV, aspect, near, far
+		shader->setUniform("proj", proj);
 
-		glBindVertexArray(vao);
 		//Draw Objects
-		for (int i = 0; i < wallPositions.size(); i++) {
-			glm::mat4 model = glm::mat4(1);
-			model = glm::translate(model, wallPositions[i]);
-			//model = glm::rotate(model, timePast * 3.14f / 2, glm::vec3(0.0f, 1.0f, 1.0f));
-			//model = glm::rotate(model, timePast * 3.14f / 4, glm::vec3(1.0f, 0.0f, 0.0f));
-			shader.setUniform("model", model);
-			glDrawArrays(GL_TRIANGLES, 0, numTris); //(Primitives, Which VBO, Number of vertices)
-		}
-
+		wallModel.draw();
+		floorModel.draw();
 
 		SDL_GL_SwapWindow(window); //Double buffering
 
@@ -276,10 +236,9 @@ int main(int argc, char* argv[]) {
 
 
 	//Clean Up
-	shader.deleteShader();
-
-	glDeleteBuffers(1, vbo);
-	glDeleteVertexArrays(1, &vao);
+	shader->deleteShader();
+	wallModel.cleanUp();
+	floorModel.cleanUp();
 
 	SDL_GL_DeleteContext(context);
 	SDL_Quit();

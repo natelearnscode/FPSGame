@@ -2,9 +2,13 @@
 in vec3 Color;
 in vec3 normal;
 in vec3 pos;
+in vec3 TextCoord;
 const vec3 lightDir = normalize(vec3(1,1,1));
 out vec4 outColor;
 const float ambient = .3;
+
+//uniform sampler2D Texture;
+
 void main() {
    vec3 diffuseC = Color*max(dot(lightDir,normal),0.0);
    vec3 ambC = Color*ambient;

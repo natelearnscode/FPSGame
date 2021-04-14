@@ -154,9 +154,16 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="EventHandler.h" />
+    <ClInclude Include="Floor.h" />
     <ClInclude Include="glad\glad.h" />
     <ClInclude Include="glad\khrplatform.h" />
+    <ClInclude Include="OBJFileParser.h" />
     <ClInclude Include="shader.h" />
+    <ClInclude Include="Wall.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\shader.frag" />
+    <None Include="shaders\shader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
