@@ -1,5 +1,7 @@
 #ifndef WALL_H
 #define WALL_H
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #include "OBJFileParser.h"
 
 using namespace std;
@@ -12,34 +14,82 @@ public:
 	float* modelData;
 	GLuint vao;
 	GLuint vbo[1];
+	unsigned int texture;
 	int numLines = 0;
 	float numTris = 0;
+	float wallRadius = 1.0f;
 
 
 	Wall() {};
 
+	bool checkCollision(glm::vec3 position, float playerRadius) {
+		bool playerInWallX = false;
+		bool playerInWallY = false;
+		bool playerInWallZ = false;
+		for (auto location : locations) {
+			//Check x values
+			float wallXMin = (location.x - wallRadius);
+			float wallXMax = (location.x + wallRadius);
+			float playerXMin = (position.x - playerRadius);
+			float playerXMax = (position.x + playerRadius);
+			bool playerInWallX = playerXMax >= wallXMin && playerXMin <= wallXMax;
+
+			//Check y values
+			float wallYMin = (location.y - wallRadius);
+			float wallYMax = (location.y + wallRadius);
+			float playerYMin = (position.y - playerRadius);
+			float playerYMax = (position.y + playerRadius);
+			bool playerInWallY = playerYMax >= wallYMin && playerYMin <= wallYMax;
+
+			//Check z values
+			float wallZMin = (location.z - wallRadius);
+			float wallZMax = (location.z + wallRadius);
+			float playerZMin = (position.z - playerRadius);
+			float playerZMax = (position.z + playerRadius);
+			bool playerInWallZ = playerZMax >= wallZMin && playerZMin <= wallZMax;
+			if (playerInWallX && playerInWallY && playerInWallZ) {
+				printf("%d %d %d\n", playerInWallX, playerInWallY, playerInWallZ);
+				return true;
+			}
+		}
+		return false;
+	}
+
 	void loadModel(Shader* s) {
 		std::cout << "Loading Walls... " << std::endl;
 		shader = s;
-		glm::vec3 color = glm::vec3(0.1, 0.6, 0.2);
-		modelData = objFileParser.loadOBJFile("models/test.obj", numLines, numTris, color);
-		//Load model data from text file
-		//ifstream modelFile;
-		//modelFile.open("models/cube.txt");
-		//modelFile >> numLines;
-		//modelData = new float[numLines];
-		//for (int i = 0; i < numLines; i++) {
-		//	modelFile >> modelData[i];
-		//}
-		//printf("Mode line count: %d\n", numLines);
-		//numTris = numLines / 8;
-		//modelFile.close();
+		glm::vec3 color = glm::vec3(1, 1, 1);
+		modelData = objFileParser.loadOBJFile("models/wall.obj", numLines, numTris, color);
 
 		//Build VAO from model data
 		buildVAO();
 	};
 
 	void buildVAO() {
+		//Load texture
+		glGenTextures(1, &texture);
+		glActiveTexture(GL_TEXTURE0); // activate the texture unit first before binding texture
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		int width, height, nrChannels;
+		unsigned char* data = stbi_load("models/wall128x128.png", &width, &height, &nrChannels, 0);
+		if (data){
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+			glGenerateMipmap(GL_TEXTURE_2D);
+		}
+		else {
+			std::cout << "Failed to load texture. Error: " << stbi_failure_reason() << std::endl;
+		}
+		stbi_image_free(data);
+		glUniform1i(glGetUniformLocation(shader->ID, "Texture"), 0); 
+		//Unbind texture
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
 		//Build a Vertex Array Object. This stores the VBO and attribute mappings in one object
 		glGenVertexArrays(1, &vao); //Create a VAO
 		glBindVertexArray(vao); //Bind the above created VAO to the current context
@@ -75,6 +125,8 @@ public:
 
 	void draw() {
 		glBindVertexArray(vao);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
 		for (int i = 0; i < locations.size(); i++) {
 			glm::mat4 model = glm::mat4(1);
 			model = glm::translate(model, locations[i]);
@@ -85,6 +137,8 @@ public:
 			shader->setUniform("model", model);
 			glDrawArrays(GL_TRIANGLES, 0, numTris); //(Primitives, Which VBO, Number of vertices)
 		}
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, 0); //Unbind the texture
 		glBindVertexArray(0); //Unbind the VAO
 	};
 

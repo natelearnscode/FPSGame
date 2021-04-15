@@ -13,20 +13,20 @@ public:
 
 	Camera(int w, int h) : crossHairX(w/2), crossHairY(h/2) {};
 
-	void moveForward(float movementSpeed) {
-		position += movementSpeed * direction;
+	glm::vec3 moveForward(float movementSpeed) {
+		return position + movementSpeed * direction;
 	}
 
-	void moveBackward(float movementSpeed) {
-		position -= movementSpeed * direction;
+	glm::vec3 moveBackward(float movementSpeed) {
+		return position - movementSpeed * direction;
 	}
 
-	void moveLeft(float movementSpeed) {
-		position -= movementSpeed * glm::normalize(glm::cross(direction, up));
+	glm::vec3 moveLeft(float movementSpeed) {
+		return position - movementSpeed * glm::normalize(glm::cross(direction, up));
 	}
 
-	void moveRight(float movementSpeed) {
-		position += movementSpeed * glm::normalize(glm::cross(direction, up));
+	glm::vec3 moveRight(float movementSpeed) {
+		return position + movementSpeed * glm::normalize(glm::cross(direction, up));
 	}
 
 	void updateLookDirection(int currentMouseX, int currentMouseY, float sensitivity) {

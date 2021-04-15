@@ -159,6 +159,7 @@
     <ClInclude Include="glad\khrplatform.h" />
     <ClInclude Include="OBJFileParser.h" />
     <ClInclude Include="shader.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="Wall.h" />
   </ItemGroup>
   <ItemGroup>

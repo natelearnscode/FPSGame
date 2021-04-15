@@ -13,6 +13,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 //For Visual Studios
 #ifdef _MSC_VER
@@ -39,6 +40,7 @@ float deltaTime = 0;
 bool fullscreen = false;
 int screenWidth = 800;
 int screenHeight = 600;
+glm::vec3 initialPosition;
 
 char windowTitle[] = "My OpenGL Program";
 
@@ -70,40 +72,46 @@ void LoadMap(const char* mapFilePath, Shader* shader) {
 	int mapScale = 2;
 
 	std::cout << "Loading floor... " << endl;
-	floorModel.loadModel(shader, width * mapScale, height * mapScale);
+	floorModel.loadModel(shader, width, height, mapScale);
 
 	//Add walls to the perimeter of the map
-	for (int i = 0; i < height; i++) {
-		wallModel.locations.push_back(glm::vec3(i * mapScale, 0, -1 * mapScale));
-		wallModel.locations.push_back(glm::vec3(i * mapScale, 0, height * mapScale));
-	}
-	for (int i = 0; i < width; i++) {
+	for (int i = -1; i <= width; i++) {
 		wallModel.locations.push_back(glm::vec3(-1 * mapScale, 0, i * mapScale));
-		wallModel.locations.push_back(glm::vec3(width * mapScale, 0, i * mapScale));
+		wallModel.locations.push_back(glm::vec3(height * mapScale, 0, i * mapScale));
 	}
+	for (int i = -1; i <= height; i++) {
+		wallModel.locations.push_back(glm::vec3(i * mapScale, 0, -1 * mapScale));
+		wallModel.locations.push_back(glm::vec3(i * mapScale, 0, width * mapScale));
+	}
+
+	//Format file data to be indexed correctly
+	vector<std::string> mapContent;
+	while (getline(mapFile, line)) {
+		mapContent.push_back(line);
+	}
+	std::reverse(mapContent.begin(), mapContent.end());
 
 	//Read map data
-	for (int i = 0; i < height; i++) {
-		//cout << "i: " << to_string(i) << endl;
-		getline(mapFile,line);
-		for (int j = 0; j < width; j++) {
-			//cout << "i: " << to_string(i) << "j: " << to_string(j) << " val: " << line[j] << endl;
-			if (line[j] == '0') {
+	for (int i = 0; i < width; i++) {
+		for (int j = 0; j < height; j++) {
+			//printf("(%d, %d): %c\n", i, j, mapContent[j][i]);
+			if (mapContent[j][i] == '0') {
 				continue;
 			}
-			else if (line[j] == 'W') { //handle walls
+			else if (mapContent[j][i] == 'W') { //handle walls
 				wallModel.locations.push_back(glm::vec3(j * mapScale, 0, i * mapScale));
 			}
-			else if (line[j] == 'S') { //handle start
-				camera.position = glm::vec3(j * mapScale,0,i * mapScale);
+			else if (mapContent[j][i] == 'S') { //handle start
+				initialPosition = glm::vec3(j * mapScale, 0, i * mapScale);
+				camera.position = initialPosition;
 			}
-			else if (line[j] == 'G') { //handle goal
+			else if (mapContent[j][i] == 'G') { //handle goal
 
 			}
-			else if (line[j] == 'A' || line[j] == 'B' || line[j] == 'C' || line[j] == 'D' || line[j] == 'E') {  //handle doors
+			else if (mapContent[j][i] == 'A' || mapContent[j][i] == 'B' || mapContent[j][i] == 'C' || mapContent[j][i] == 'D' || mapContent[j][i] == 'E') {  //handle doors
 
 			}
-			else if (line[j] == 'a' || line[j] == 'b' || line[j] == 'c' || line[j] == 'd' || line[j] == 'e') {  //handle keys
+			else if (mapContent[j][i] == 'a' || mapContent[j][i] == 'b' || mapContent[j][i] == 'c' || mapContent[j][i] == 'd' || mapContent[j][i] == 'e') {  //handle keys
 
 			}
 		}
@@ -161,6 +169,7 @@ int main(int argc, char* argv[]) {
 		lastFrameTime = t_start;
 		float movementSpeed = 0.003f * deltaTime;
 		float cameraSensitivity = 0.5f;
+		//printf("player position (%f, %f)\n", camera.position.x, camera.position.z);
 		while (SDL_PollEvent(&windowEvent)) {
 			if (windowEvent.type == SDL_QUIT) quit = true; //Exit event loop
 			if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
@@ -176,25 +185,45 @@ int main(int argc, char* argv[]) {
 				aspect = screenWidth / (float)screenHeight;
 				glViewport(0, 0, screenWidth, screenHeight);
 			}
-
+			if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_r) //If "r" is pressed reset player position
+				camera.position = initialPosition;
 			eventHandler.handleEvent(windowEvent);
 
 			//Update player movement
+			float radius = 0.25f;
 			if (eventHandler.moveForward) { //If "w" is pressed
-				camera.moveForward(movementSpeed);
+				glm::vec3 newPosition = camera.moveForward(movementSpeed);
+				bool wallCollision = wallModel.checkCollision(newPosition, radius);
+				if (!wallCollision) {
+					camera.position = newPosition;
+				}
 			}
 			if (eventHandler.moveBackward) { //If "s" is pressed
-				camera.moveBackward(movementSpeed);
+				glm::vec3 newPosition = camera.moveBackward(movementSpeed);
+				bool wallCollision = wallModel.checkCollision(newPosition, radius);
+				if (!wallCollision) {
+					camera.position = newPosition;
+				}
 			}
 			if (eventHandler.moveLeft) { //If "a" is pressed
-				camera.moveLeft(movementSpeed);
+				glm::vec3 newPosition = camera.moveLeft(movementSpeed);
+				bool wallCollision = wallModel.checkCollision(newPosition, radius);
+				if (!wallCollision) {
+					camera.position = newPosition;
+				}
 			}
 			if (eventHandler.moveRight) { //If "d" is pressed
-				camera.moveRight(movementSpeed);
+				glm::vec3 newPosition = camera.moveRight(movementSpeed);
+				bool wallCollision = wallModel.checkCollision(newPosition, radius);
+				if (!wallCollision) {
+					camera.position = newPosition;
+				}
 			}
 
+			//Calculate Gravity
+
 			//Make sure camera is always at ground level
-			//camera.position.y = 0;
+			camera.position.y = 0;
 
 			//Update Camera's look direction based on mouse position
 			camera.updateLookDirection(eventHandler.mouseXPos, eventHandler.mouseYPos, cameraSensitivity);
