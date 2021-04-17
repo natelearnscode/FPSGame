@@ -169,6 +169,23 @@
     <None Include="shaders\shader.frag" />
     <None Include="shaders\shader.vert" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="maps\map.txt" />
+    <Text Include="maps\map2.txt" />
+    <Text Include="maps\map3.txt" />
+    <Text Include="maps\map4.txt" />
+    <Text Include="models\texturecredts.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="models\cube.obj" />
+    <Object Include="models\goal.obj" />
+    <Object Include="models\wall.obj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="models\grass.png" />
+    <Image Include="models\marble2.png" />
+    <Image Include="models\wall128x128.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
 	shader->use(); //Set the active shader (only one can be used at a time)
 
 	//Load map from text file
-	LoadMap("maps/map.txt", shader);
+	LoadMap("maps/map4.txt", shader);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
