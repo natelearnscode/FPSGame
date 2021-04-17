@@ -31,6 +31,9 @@
 #include "Camera.h"
 #include "Wall.h"
 #include "Floor.h"
+#include "Key.h"
+#include "Door.h"
+#include "Goal.h"
 
 using namespace std;
 
@@ -47,12 +50,15 @@ char windowTitle[] = "My OpenGL Program";
 float avgRenderTime = 0;
 Wall wallModel;
 Floor floorModel;
-
+Key keys;
+Door doors;
+Goal goal;
 Camera camera = Camera(screenWidth, screenHeight);
 
 void LoadMap(const char* mapFilePath, Shader* shader) {
 	std::cout << "Loading map " << mapFilePath << "..." << endl;
 	//Load Models
+	std::cout << "Loading Walls... " << endl;
 	wallModel.loadModel(shader);
 
 	ifstream mapFile;
@@ -71,8 +77,17 @@ void LoadMap(const char* mapFilePath, Shader* shader) {
 	ss >> width >> height;
 	int mapScale = 2;
 
-	std::cout << "Loading floor... " << endl;
+	std::cout << "Loading Floor... " << endl;
 	floorModel.loadModel(shader, width, height, mapScale);
+
+	std::cout << "Loading Keys... " << endl;
+	keys.loadModel(shader);
+
+	std::cout << "Loading Doors... " << endl;
+	doors.loadModel(shader);
+
+	std::cout << "Loading Goal... " << endl;
+	goal.loadModel(shader);
 
 	//Add walls to the perimeter of the map
 	for (int i = -1; i <= width; i++) {
@@ -106,13 +121,13 @@ void LoadMap(const char* mapFilePath, Shader* shader) {
 				camera.position = initialPosition;
 			}
 			else if (mapContent[j][i] == 'G') { //handle goal
-
+				goal.location = glm::vec3(j * mapScale, 0, i * mapScale);
 			}
 			else if (mapContent[j][i] == 'A' || mapContent[j][i] == 'B' || mapContent[j][i] == 'C' || mapContent[j][i] == 'D' || mapContent[j][i] == 'E') {  //handle doors
-
+				doors.dictionary[mapContent[j][i]] = glm::vec3(j * mapScale, 0, i * mapScale);
 			}
 			else if (mapContent[j][i] == 'a' || mapContent[j][i] == 'b' || mapContent[j][i] == 'c' || mapContent[j][i] == 'd' || mapContent[j][i] == 'e') {  //handle keys
-
+				keys.dictionary[mapContent[j][i]] = glm::vec3(j * mapScale, -0.5, i * mapScale);
 			}
 		}
 	}
@@ -158,6 +173,8 @@ int main(int argc, char* argv[]) {
 	LoadMap("maps/map.txt", shader);
 
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 
 	//Event Loop (Loop forever processing each event as fast as possible)
 	SDL_Event windowEvent;
@@ -167,7 +184,7 @@ int main(int argc, char* argv[]) {
 		float t_start = SDL_GetTicks();
 		deltaTime = t_start - lastFrameTime;
 		lastFrameTime = t_start;
-		float movementSpeed = 0.003f * deltaTime;
+		camera.movementSpeed = 0.003f * deltaTime;
 		float cameraSensitivity = 0.5f;
 		//printf("player position (%f, %f)\n", camera.position.x, camera.position.z);
 		while (SDL_PollEvent(&windowEvent)) {
@@ -186,51 +203,79 @@ int main(int argc, char* argv[]) {
 				glViewport(0, 0, screenWidth, screenHeight);
 			}
 			if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_r) //If "r" is pressed reset player position
-				camera.position = initialPosition;
+				LoadMap("maps/map.txt", shader);
 			eventHandler.handleEvent(windowEvent);
 
 			//Update player movement
 			float radius = 0.25f;
+			bool isUnlocked = false;
 			if (eventHandler.moveForward) { //If "w" is pressed
-				glm::vec3 newPosition = camera.moveForward(movementSpeed);
+				glm::vec3 newPosition = camera.moveForward();
+				bool goalCollision = goal.checkCollision(newPosition, radius);
+				if (goalCollision)
+					quit = true;
 				bool wallCollision = wallModel.checkCollision(newPosition, radius);
-				if (!wallCollision) {
+				bool doorCollision = doors.checkCollision(newPosition, camera.isCarryingKey ? radius + 0.25 : radius, camera.key, isUnlocked);
+				if (doorCollision && isUnlocked) {
+					keys.dictionary.erase(camera.key);
+					camera.isCarryingKey = false;
+				}
+				if (!wallCollision && !doorCollision) {
 					camera.position = newPosition;
 				}
 			}
 			if (eventHandler.moveBackward) { //If "s" is pressed
-				glm::vec3 newPosition = camera.moveBackward(movementSpeed);
+				glm::vec3 newPosition = camera.moveBackward();
+				bool goalCollision = goal.checkCollision(newPosition, radius);
+				if (goalCollision)
+					quit = true;
 				bool wallCollision = wallModel.checkCollision(newPosition, radius);
-				if (!wallCollision) {
+				bool doorCollision = doors.checkCollision(newPosition, camera.isCarryingKey ? radius + 0.25 : radius, camera.key, isUnlocked);
+				if (!wallCollision && !doorCollision) {
 					camera.position = newPosition;
 				}
 			}
 			if (eventHandler.moveLeft) { //If "a" is pressed
-				glm::vec3 newPosition = camera.moveLeft(movementSpeed);
+				glm::vec3 newPosition = camera.moveLeft();
+				bool goalCollision = goal.checkCollision(newPosition, radius);
+				if (goalCollision)
+					quit = true;
 				bool wallCollision = wallModel.checkCollision(newPosition, radius);
-				if (!wallCollision) {
+				bool doorCollision = doors.checkCollision(newPosition, camera.isCarryingKey ? radius + 0.25 : radius, camera.key, isUnlocked);
+				if (!wallCollision && !doorCollision) {
 					camera.position = newPosition;
 				}
 			}
 			if (eventHandler.moveRight) { //If "d" is pressed
-				glm::vec3 newPosition = camera.moveRight(movementSpeed);
+				glm::vec3 newPosition = camera.moveRight();
+				bool goalCollision = goal.checkCollision(newPosition, radius);
+				if (goalCollision)
+					quit = true;
 				bool wallCollision = wallModel.checkCollision(newPosition, radius);
-				if (!wallCollision) {
+				bool doorCollision = doors.checkCollision(newPosition, camera.isCarryingKey ? radius + 0.25 : radius, camera.key, isUnlocked);
+				if (!wallCollision && !doorCollision) {
 					camera.position = newPosition;
 				}
 			}
+			if (eventHandler.isJumping && !camera.jumping){
+				camera.startJump(t_start);
+			}
 
-			//Calculate Gravity
-
-			//Make sure camera is always at ground level
-			camera.position.y = 0;
-
-			//Update Camera's look direction based on mouse position
-			camera.updateLookDirection(eventHandler.mouseXPos, eventHandler.mouseYPos, cameraSensitivity);
+			//Check key collision
+			char collidedKey;
+			bool hasCollided = keys.checkCollision(camera.position, radius, collidedKey);
+			if (hasCollided) {
+				camera.isCarryingKey = true;
+				camera.key = collidedKey;
+			}
 
 
 			SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0); //Set to full screen 
 		}
+
+		//Update Camera's look direction based on mouse position
+		camera.updateLookDirection(eventHandler.mouseXPos, eventHandler.mouseYPos, cameraSensitivity);
+		camera.processGravity(deltaTime);
 
 		// Clear the screen to default color
 		glClearColor(.2f, 0.4f, 0.8f, 1.0f);
@@ -243,16 +288,18 @@ int main(int argc, char* argv[]) {
 			camera.position,  //Cam Position
 			camera.position + camera.direction,  //Look at point
 			camera.up); //Up
-		shader->setUniform("view", view);
+		shader->setUniformMatrix("view", view);
 
 		//Set up projection matrix
 		glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f); //FOV, aspect, near, far
-		shader->setUniform("proj", proj);
+		shader->setUniformMatrix("proj", proj);
 
 		//Draw Objects
 		wallModel.draw();
 		floorModel.draw();
-
+		keys.draw(timePast, camera.isCarryingKey, camera.key, camera.position, camera.direction, camera.pitch);
+		doors.draw();
+		goal.draw(timePast);
 		SDL_GL_SwapWindow(window); //Double buffering
 
 		float t_end = SDL_GetTicks();

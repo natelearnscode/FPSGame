@@ -23,9 +23,6 @@ public:
 	Wall() {};
 
 	bool checkCollision(glm::vec3 position, float playerRadius) {
-		bool playerInWallX = false;
-		bool playerInWallY = false;
-		bool playerInWallZ = false;
 		for (auto location : locations) {
 			//Check x values
 			float wallXMin = (location.x - wallRadius);
@@ -48,7 +45,6 @@ public:
 			float playerZMax = (position.z + playerRadius);
 			bool playerInWallZ = playerZMax >= wallZMin && playerZMin <= wallZMax;
 			if (playerInWallX && playerInWallY && playerInWallZ) {
-				printf("%d %d %d\n", playerInWallX, playerInWallY, playerInWallZ);
 				return true;
 			}
 		}
@@ -56,10 +52,8 @@ public:
 	}
 
 	void loadModel(Shader* s) {
-		std::cout << "Loading Walls... " << std::endl;
 		shader = s;
-		glm::vec3 color = glm::vec3(1, 1, 1);
-		modelData = objFileParser.loadOBJFile("models/wall.obj", numLines, numTris, color);
+		modelData = objFileParser.loadOBJFile("models/wall.obj", numLines, numTris);
 
 		//Build VAO from model data
 		buildVAO();
@@ -103,22 +97,22 @@ public:
 
 	  //Tell OpenGL how to set fragment shader input 
 		GLint posAttrib = glGetAttribLocation(shader->ID, "position");
-		glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), 0);
+		glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
 		//Attribute, vals/attrib., type, normalized?, stride, offset
 		//Binds to VBO current GL_ARRAY_BUFFER 
 		glEnableVertexAttribArray(posAttrib);
 
 		GLint textAttrib = glGetAttribLocation(shader->ID, "inTextCoord");
-		glVertexAttribPointer(textAttrib, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+		glVertexAttribPointer(textAttrib, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(textAttrib);
 
 		GLint normAttrib = glGetAttribLocation(shader->ID, "inNormal");
-		glVertexAttribPointer(normAttrib, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(5 * sizeof(float)));
+		glVertexAttribPointer(normAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 		glEnableVertexAttribArray(normAttrib);
 
-		GLint colAttrib = glGetAttribLocation(shader->ID, "inColor");
-		glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 11*sizeof(float), (void*)(8*sizeof(float)));
-		glEnableVertexAttribArray(colAttrib);
+		//GLint colAttrib = glGetAttribLocation(shader->ID, "inColor");
+		//glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 11*sizeof(float), (void*)(8*sizeof(float)));
+		//glEnableVertexAttribArray(colAttrib);
 
 		glBindVertexArray(0); //Unbind the VAO
 	};
@@ -127,6 +121,7 @@ public:
 		glBindVertexArray(vao);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
+		shader->setUniformVec3("inColor", glm::vec3(1, 1, 1));
 		for (int i = 0; i < locations.size(); i++) {
 			glm::mat4 model = glm::mat4(1);
 			model = glm::translate(model, locations[i]);
@@ -134,7 +129,7 @@ public:
 			//model = glm::scale(model, glm::vec3(0.2, 0.2, 0.2));
 			//model = glm::rotate(model, timePast * 3.14f / 2, glm::vec3(0.0f, 1.0f, 1.0f));
 			//model = glm::rotate(model, timePast * 3.14f / 4, glm::vec3(1.0f, 0.0f, 0.0f));
-			shader->setUniform("model", model);
+			shader->setUniformMatrix("model", model);
 			glDrawArrays(GL_TRIANGLES, 0, numTris); //(Primitives, Which VBO, Number of vertices)
 		}
 		glActiveTexture(GL_TEXTURE0);

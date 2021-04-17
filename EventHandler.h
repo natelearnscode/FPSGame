@@ -9,12 +9,15 @@ public:
 	bool moveBackward;
 	bool moveLeft;
 	bool moveRight;
+	bool isJumping;
 	int mouseXPos;
 	int mouseYPos;
 
-	EventHandler() : moveForward(false), moveBackward(false), moveLeft(false), moveRight(false) {};
+	EventHandler() : moveForward(false), moveBackward(false), moveLeft(false), moveRight(false), isJumping(false) {};
 
 	void handleEvent(SDL_Event e) {
+		isJumping = false;
+
 		//Check key down events to set flags for if the character should move in a direction
 		if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_w) { //If "w" is pressed
 			moveForward = true;
@@ -29,6 +32,7 @@ public:
 			moveRight = true;
 		}
 
+
 		//Check key up events to set flags for if the character should stop moving in a direction
 		if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_w) { //If "w" is released
 			moveForward = false;
@@ -41,6 +45,9 @@ public:
 		}
 		if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_d) { //If "d" is released
 			moveRight = false;
+		}
+		if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) { //If spacebar is pressed
+			isJumping = true;
 		}
 
 		//Check mouse event

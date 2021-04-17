@@ -7,7 +7,7 @@ public:
 
 	OBJFileParser() {};
 
-	float* loadOBJFile(const char* modelFilePath, int &modelDataLength, float &numTris, glm::vec3 color) {
+	float* loadOBJFile(const char* modelFilePath, int &modelDataLength, float &numTris) {
 		std::ifstream modelFile;
 		modelFile.open(modelFilePath);
 		if (!modelFile) {	// if not a valid input source, abort
@@ -68,12 +68,12 @@ public:
 		}
 
 		//Format model data for OpenGl
-		modelDataLength = vertexIndices.size() * 11;
+		modelDataLength = vertexIndices.size() * 8;
 		numTris = vertexIndices.size();
 
 		float * modelData = new float[modelDataLength];
-		for (int i = 0; i < modelDataLength; i+= 11) {
-			glm::vec3 vertexIndex = vertexIndices[i/11];
+		for (int i = 0; i < modelDataLength; i+= 8) {
+			glm::vec3 vertexIndex = vertexIndices[i/8];
 			int vIndex = vertexIndex.x - 1;
 			int tIndex = vertexIndex.y - 1;
 			int nIndex = vertexIndex.z - 1;
@@ -95,11 +95,6 @@ public:
 			modelData[i + 5] = v.x;
 			modelData[i + 6] = v.y;
 			modelData[i + 7] = v.z;
-
-			//Add color
-			modelData[i + 8] = color.x;
-			modelData[i + 9] = color.y;
-			modelData[i + 10] = color.z;
 		}
 		return modelData;
 	}

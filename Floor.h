@@ -58,8 +58,7 @@ public:
 	void loadModel(Shader* s, int w, int h, int scale) {
 		shader = s;
 		//Load model data
-		glm::vec3 color = glm::vec3(1, 1, 1);
-		modelData = objFileParser.loadOBJFile("models/wall.obj", numLines, numTris, color);
+		modelData = objFileParser.loadOBJFile("models/wall.obj", numLines, numTris);
 
 		width = w;
 		height = h;
@@ -109,33 +108,34 @@ public:
 
 	  //Tell OpenGL how to set fragment shader input 
 		GLint posAttrib = glGetAttribLocation(shader->ID, "position");
-		glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), 0);
+		glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
 		//Attribute, vals/attrib., type, normalized?, stride, offset
 		//Binds to VBO current GL_ARRAY_BUFFER 
 		glEnableVertexAttribArray(posAttrib);
 
 		GLint textAttrib = glGetAttribLocation(shader->ID, "inTextCoord");
-		glVertexAttribPointer(textAttrib, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+		glVertexAttribPointer(textAttrib, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(textAttrib);
 
 		GLint normAttrib = glGetAttribLocation(shader->ID, "inNormal");
-		glVertexAttribPointer(normAttrib, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(5 * sizeof(float)));
+		glVertexAttribPointer(normAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 		glEnableVertexAttribArray(normAttrib);
 
-		GLint colAttrib = glGetAttribLocation(shader->ID, "inColor");
-		glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(8 * sizeof(float)));
-		glEnableVertexAttribArray(colAttrib);
-		glBindVertexArray(0); //Unbind the VAO
+		//GLint colAttrib = glGetAttribLocation(shader->ID, "inColor");
+		//glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(8 * sizeof(float)));
+		//glEnableVertexAttribArray(colAttrib);
+		//glBindVertexArray(0); //Unbind the VAO
 	};
 
 	void draw() {
 		glBindVertexArray(vao);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
+		shader->setUniformVec3("inColor", glm::vec3(1, 1, 1));
 		for (int i = 0; i < locations.size(); i++) {
 			glm::mat4 model = glm::mat4(1);
 			model = glm::translate(model, locations[i]);
-			shader->setUniform("model", model);
+			shader->setUniformMatrix("model", model);
 			glDrawArrays(GL_TRIANGLES, 0, numTris); 
 		}
 		glActiveTexture(GL_TEXTURE0);

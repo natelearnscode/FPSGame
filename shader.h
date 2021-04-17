@@ -84,10 +84,16 @@ public:
 		glDeleteShader(fragmentShader);
 	};
 
-	//Method that sets the uniform values in the shader
-	void setUniform(const std::string &name, glm::mat4 value) {
+	//Method that sets the uniform matrix values in the shader
+	void setUniformMatrix(const std::string &name, glm::mat4 value) {
 		GLint uniformLocation = glGetUniformLocation(ID, name.c_str());
 		glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, glm::value_ptr(value));
+	};
+
+	//Method that sets the uniform vec3 values in the shader
+	void setUniformVec3(const std::string& name, glm::vec3 value) {
+		GLint uniformLocation = glGetUniformLocation(ID, name.c_str());
+		glUniform3fv(uniformLocation, 1, glm::value_ptr(value));
 	};
 
 	void use() { glUseProgram(ID); };

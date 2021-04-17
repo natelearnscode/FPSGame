@@ -1,4 +1,6 @@
 Game texture credits:
 
 wall by GrumpyDiamond - https://opengameart.org/content/seamless-wall 
-floor by Lil Pie - https://opengameart.org/content/planks-floor
+floor by athile - https://opengameart.org/content/seamless-grass-texture-ii
+key by ShareTextures - https://opengameart.org/content/real-marble-textures-collection-set-3-part-1
+door by cc0texture - https://cc0textures.com/view?id=Plaster001

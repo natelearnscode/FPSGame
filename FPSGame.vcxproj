@@ -153,10 +153,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Door.h" />
     <ClInclude Include="EventHandler.h" />
     <ClInclude Include="Floor.h" />
     <ClInclude Include="glad\glad.h" />
     <ClInclude Include="glad\khrplatform.h" />
+    <ClInclude Include="Goal.h" />
+    <ClInclude Include="Key.h" />
     <ClInclude Include="OBJFileParser.h" />
     <ClInclude Include="shader.h" />
     <ClInclude Include="stb_image.h" />
