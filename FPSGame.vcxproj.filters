@@ -19,9 +19,6 @@
     <Filter Include="Maps">
       <UniqueIdentifier>{6604e0ea-70fa-4776-9939-3af231add72f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Assets">
-      <UniqueIdentifier>{70d23b5c-b29e-4795-a0c7-c1a43a5dd3c7}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="game.cpp">
@@ -90,30 +87,5 @@
     <Text Include="maps\map4.txt">
       <Filter>Maps</Filter>
     </Text>
-    <Text Include="models\texturecredts.txt">
-      <Filter>Assets</Filter>
-    </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="models\cube.obj">
-      <Filter>Assets</Filter>
-    </Object>
-    <Object Include="models\goal.obj">
-      <Filter>Assets</Filter>
-    </Object>
-    <Object Include="models\wall.obj">
-      <Filter>Assets</Filter>
-    </Object>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="models\grass.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="models\marble2.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="models\wall128x128.png">
-      <Filter>Assets</Filter>
-    </Image>
   </ItemGroup>
 </Project>
